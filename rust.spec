@@ -48,7 +48,7 @@
 
 Name:           rust
 Version:        1.23.0
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        The Rust Programming Language
 License:        (ASL 2.0 or MIT) and (BSD and ISC and MIT)
 # ^ written as: (rust itself) and (bundled libraries)
@@ -412,8 +412,7 @@ rm -f %{buildroot}%{rustlibdir}/etc/lldb_*.py*
 ./x.py test --no-fail-fast || :
 
 
-%post -p /sbin/ldconfig
-%postun -p /sbin/ldconfig
+%ldconfig_scriptlets
 
 
 %files
@@ -475,6 +474,9 @@ rm -f %{buildroot}%{rustlibdir}/etc/lldb_*.py*
 
 
 %changelog
+* Thu Feb 01 2018 Igor Gnatenko <ignatenkobrain@fedoraproject.org> - 1.23.0-2
+- Switch to %%ldconfig_scriptlets
+
 * Mon Jan 08 2018 Josh Stone <jistone@redhat.com> - 1.23.0-1
 - Update to 1.23.0.
 
