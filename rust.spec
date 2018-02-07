@@ -62,6 +62,9 @@ ExclusiveArch:  %{rust_arches}
 %endif
 Source0:        https://static.rust-lang.org/dist/%{rustc_package}.tar.xz
 
+# https://github.com/WebAssembly/binaryen/pull/1400
+Patch1:         0001-Fix-Wcatch-value-from-GCC-8.patch
+
 # Get the Rust triple for any arch.
 %{lua: function rust_triple(arch)
   local abi = "gnu"
@@ -282,6 +285,10 @@ test -f '%{local_rust_root}/bin/rustc'
 
 %setup -q -n %{rustc_package}
 
+pushd src/binaryen
+%patch1 -p1 -b .catch-value
+popd
+
 # We're disabling jemalloc, but rust-src still wants it.
 # rm -rf src/jemalloc/
 
@@ -481,6 +488,7 @@ rm -f %{buildroot}%{rustlibdir}/etc/lldb_*.py*
 %changelog
 * Tue Feb 06 2018 Josh Stone <jistone@redhat.com> - 1.23.0-3
 - Use full-bootstrap to work around a rebuild issue.
+- Patch binaryen for GCC 8
 
 * Thu Feb 01 2018 Igor Gnatenko <ignatenkobrain@fedoraproject.org> - 1.23.0-2
 - Switch to %%ldconfig_scriptlets
