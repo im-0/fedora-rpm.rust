@@ -48,7 +48,7 @@
 
 Name:           rust
 Version:        1.23.0
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        The Rust Programming Language
 License:        (ASL 2.0 or MIT) and (BSD and ISC and MIT)
 # ^ written as: (rust itself) and (bundled libraries)
@@ -338,6 +338,10 @@ find src/vendor -name .cargo-checksum.json \
 %define enable_debuginfo --enable-debuginfo --disable-debuginfo-only-std --disable-debuginfo-lines
 %endif
 
+# NB: full bootstrap is needed because of a bug in local_rebuild:
+# https://github.com/rust-lang/rust/issues/47469
+# (should be fixed in rust-1.25)
+
 %configure --disable-option-checking \
   --libdir=%{common_libdir} \
   --build=%{rust_triple} --host=%{rust_triple} --target=%{rust_triple} \
@@ -348,6 +352,7 @@ find src/vendor -name .cargo-checksum.json \
   --disable-rpath \
   %{enable_debuginfo} \
   --enable-vendor \
+  --enable-full-bootstrap \
   --release-channel=%{channel}
 
 ./x.py build
@@ -474,6 +479,9 @@ rm -f %{buildroot}%{rustlibdir}/etc/lldb_*.py*
 
 
 %changelog
+* Tue Feb 06 2018 Josh Stone <jistone@redhat.com> - 1.23.0-3
+- Use full-bootstrap to work around a rebuild issue.
+
 * Thu Feb 01 2018 Igor Gnatenko <ignatenkobrain@fedoraproject.org> - 1.23.0-2
 - Switch to %%ldconfig_scriptlets
 
