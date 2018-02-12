@@ -48,7 +48,7 @@
 
 Name:           rust
 Version:        1.23.0
-Release:        3%{?dist}
+Release:        4%{?dist}
 Summary:        The Rust Programming Language
 License:        (ASL 2.0 or MIT) and (BSD and ISC and MIT)
 # ^ written as: (rust itself) and (bundled libraries)
@@ -242,7 +242,7 @@ Summary:        LLDB pretty printers for Rust
 #BuildArch:      noarch
 
 Requires:       lldb
-Requires:       python-lldb
+Requires:       python2-lldb
 Requires:       %{name}-debugger-common = %{version}-%{release}
 
 %description lldb
@@ -486,6 +486,10 @@ rm -f %{buildroot}%{rustlibdir}/etc/lldb_*.py*
 
 
 %changelog
+* Mon Feb 12 2018 Iryna Shcherbina <ishcherb@redhat.com> - 1.23.0-4
+- Update Python 2 dependency declarations to new packaging standards
+  (See https://fedoraproject.org/wiki/FinalizingFedoraSwitchtoPython3)
+
 * Tue Feb 06 2018 Josh Stone <jistone@redhat.com> - 1.23.0-3
 - Use full-bootstrap to work around a rebuild issue.
 - Patch binaryen for GCC 8
