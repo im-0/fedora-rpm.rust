@@ -8,10 +8,10 @@
 # To bootstrap from scratch, set the channel and date from src/stage0.txt
 # e.g. 1.10.0 wants rustc: 1.9.0-2016-05-24
 # or nightly wants some beta-YYYY-MM-DD
-%global bootstrap_rust 1.22.0
-%global bootstrap_cargo 0.23.0
+%global bootstrap_rust 1.23.0
+%global bootstrap_cargo 0.24.0
 %global bootstrap_channel %{bootstrap_rust}
-%global bootstrap_date 2017-11-22
+%global bootstrap_date 2018-01-04
 
 # Only the specified arches will use bootstrap binaries.
 #global bootstrap_arches %%{rust_arches}
@@ -25,7 +25,7 @@
 %bcond_with llvm_static
 
 # We can also choose to just use Rust's bundled LLVM, in case the system LLVM
-# is insufficient.  Rust currently requires LLVM 3.7+.
+# is insufficient.  Rust currently requires LLVM 3.9+.
 %if 0%{?rhel} && !0%{?epel}
 %bcond_without bundled_llvm
 %else
@@ -47,8 +47,8 @@
 
 
 Name:           rust
-Version:        1.23.0
-Release:        4%{?dist}
+Version:        1.24.0
+Release:        1%{?dist}
 Summary:        The Rust Programming Language
 License:        (ASL 2.0 or MIT) and (BSD and ISC and MIT)
 # ^ written as: (rust itself) and (bundled libraries)
@@ -64,6 +64,19 @@ Source0:        https://static.rust-lang.org/dist/%{rustc_package}.tar.xz
 
 # https://github.com/WebAssembly/binaryen/pull/1400
 Patch1:         0001-Fix-Wcatch-value-from-GCC-8.patch
+
+# https://github.com/rust-lang/rust/pull/47610
+Patch2:         0001-Update-DW_OP_plus-to-DW_OP_plus_uconst.patch
+
+# https://github.com/rust-lang/rust/pull/47688
+Patch3:         0001-Let-LLVM-5-add-DW_OP_deref-to-indirect-args-itself.patch
+
+# https://github.com/rust-lang/rust/pull/47884
+Patch4:         0001-Ignore-run-pass-sse2-when-using-system-LLVM.patch
+
+# https://github.com/rust-lang/rust/pull/47912
+Patch5:         0001-Enable-stack-probe-tests-with-system-LLVM-5.0.patch
+Patch6:         0002-Use-a-range-to-identify-SIGSEGV-in-stack-guards.patch
 
 # Get the Rust triple for any arch.
 %{lua: function rust_triple(arch)
@@ -118,19 +131,22 @@ BuildRequires:  gcc
 BuildRequires:  gcc-c++
 BuildRequires:  ncurses-devel
 BuildRequires:  zlib-devel
-BuildRequires:  python2
 BuildRequires:  curl
+
+%if 0%{?rhel} && 0%{?rhel} <= 7
+%global python python2
+%else
+%global python python3
+%endif
+BuildRequires:  %{python}
 
 %if %with bundled_llvm
 BuildRequires:  cmake3 >= 3.4.3
 Provides:       bundled(llvm) = 4.0
 %else
 BuildRequires:  cmake >= 2.8.7
-%if 0%{?epel}
-%global llvm llvm3.9
-%endif
-%if 0%{?fedora} >= 27
-%global llvm llvm4.0
+%if 0%{?epel} || 0%{?fedora} >= 28
+%global llvm llvm5.0
 %endif
 %if %defined llvm
 %global llvm_root %{_libdir}/%{llvm}
@@ -155,10 +171,10 @@ BuildRequires:  procps-ng
 BuildRequires:  gdb
 
 # TODO: work on unbundling these!
-Provides:       bundled(hoedown) = 3.0.5
+Provides:       bundled(hoedown) = 3.0.7
 Provides:       bundled(jquery) = 2.1.4
 Provides:       bundled(libbacktrace) = 6.1.0
-Provides:       bundled(miniz) = 1.14
+Provides:       bundled(miniz) = 1.16~beta+r1
 
 # Virtual provides for folks who attempt "dnf install rustc"
 Provides:       rustc = %{version}-%{release}
@@ -289,6 +305,16 @@ pushd src/binaryen
 %patch1 -p1 -b .catch-value
 popd
 
+%patch2 -p1 -b .DW_OP_plus_uconst
+%patch3 -p1 -b .DW_OP_deref
+%patch4 -p1 -b .sse2
+%patch5 -p1 -b .out-of-stack
+%patch6 -p1 -b .out-of-stack
+
+%if "%{python}" == "python3"
+sed -i.try-py3 -e '/try python2.7/i try python3 "$@"' ./configure
+%endif
+
 # We're disabling jemalloc, but rust-src still wants it.
 # rm -rf src/jemalloc/
 
@@ -362,8 +388,8 @@ find src/vendor -name .cargo-checksum.json \
   --enable-full-bootstrap \
   --release-channel=%{channel}
 
-./x.py build
-./x.py doc
+%{python} ./x.py build
+%{python} ./x.py doc
 
 
 %install
@@ -371,8 +397,8 @@ find src/vendor -name .cargo-checksum.json \
 %{?library_path:export LIBRARY_PATH="%{library_path}"}
 %{?rustflags:export RUSTFLAGS="%{rustflags}"}
 
-DESTDIR=%{buildroot} ./x.py install
-DESTDIR=%{buildroot} ./x.py install src
+DESTDIR=%{buildroot} %{python} ./x.py install
+DESTDIR=%{buildroot} %{python} ./x.py install src
 
 
 # Make sure the shared libraries are in the proper libdir
@@ -421,7 +447,7 @@ rm -f %{buildroot}%{rustlibdir}/etc/lldb_*.py*
 %{?rustflags:export RUSTFLAGS="%{rustflags}"}
 
 # The results are not stable on koji, so mask errors and just log it.
-./x.py test --no-fail-fast || :
+%{python} ./x.py test --no-fail-fast || :
 
 
 %ldconfig_scriptlets
@@ -486,6 +512,9 @@ rm -f %{buildroot}%{rustlibdir}/etc/lldb_*.py*
 
 
 %changelog
+* Thu Feb 15 2018 Josh Stone <jistone@redhat.com> - 1.24.0-1
+- Update to 1.24.0.
+
 * Mon Feb 12 2018 Iryna Shcherbina <ishcherb@redhat.com> - 1.23.0-4
 - Update Python 2 dependency declarations to new packaging standards
   (See https://fedoraproject.org/wiki/FinalizingFedoraSwitchtoPython3)
