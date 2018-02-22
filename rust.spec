@@ -48,7 +48,7 @@
 
 Name:           rust
 Version:        1.24.0
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        The Rust Programming Language
 License:        (ASL 2.0 or MIT) and (BSD and ISC and MIT)
 # ^ written as: (rust itself) and (bundled libraries)
@@ -82,6 +82,9 @@ Patch6:         0002-Use-a-range-to-identify-SIGSEGV-in-stack-guards.patch
 # via https://github.com/rust-lang/rust/pull/46592
 Patch7:         rust-pr46592-bootstrap-libdir.patch
 Patch8:         rust-pr48362-libdir-relative.patch
+
+# https://github.com/rust-lang/rust/issues/48308
+Patch9:         0001-rustc-Don-t-use-relative-paths-for-extended-errors.patch
 
 # Get the Rust triple for any arch.
 %{lua: function rust_triple(arch)
@@ -317,6 +320,7 @@ popd
 %patch6 -p1 -b .out-of-stack
 %patch7 -p1 -b .bootstrap-libdir
 %patch8 -p1 -b .bootstrap-libdir-relative
+%patch9 -p1 -b .absolute-extended-errors
 
 %if "%{python}" == "python3"
 sed -i.try-py3 -e '/try python2.7/i try python3 "$@"' ./configure
@@ -518,6 +522,9 @@ rm -f %{buildroot}%{rustlibdir}/etc/lldb_*.py*
 
 
 %changelog
+* Wed Feb 21 2018 Josh Stone <jistone@redhat.com> - 1.24.0-3
+- Backport a rebuild fix for rust#48308.
+
 * Mon Feb 19 2018 Josh Stone <jistone@redhat.com> - 1.24.0-2
 - rhbz1546541: drop full-bootstrap; cmp libs before symlinking.
 - Backport pr46592 to fix local_rebuild bootstrapping.
