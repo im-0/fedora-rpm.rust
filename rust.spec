@@ -43,7 +43,7 @@
 
 Name:           rust
 Version:        1.25.0
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        The Rust Programming Language
 License:        (ASL 2.0 or MIT) and (BSD and ISC and MIT)
 # ^ written as: (rust itself) and (bundled libraries)
@@ -175,7 +175,7 @@ Requires:       %{name}-std-static%{?_isa} = %{version}-%{release}
 Requires:       /usr/bin/cc
 
 # ALL Rust libraries are private, because they don't keep an ABI.
-%global _privatelibs lib.*-[[:xdigit:]]*[.]so.*
+%global _privatelibs lib(.*-[[:xdigit:]]*|rustc.*)[.]so.*
 %global __provides_exclude ^(%{_privatelibs})$
 %global __requires_exclude ^(%{_privatelibs})$
 %global __provides_exclude_from ^%{_docdir}/.*$
@@ -520,6 +520,9 @@ rm -f %{buildroot}%{rustlibdir}/etc/lldb_*.py*
 
 
 %changelog
+* Tue Apr 10 2018 Josh Stone <jistone@redhat.com> - 1.25.0-2
+- Filter codegen-backends from Provides too.
+
 * Thu Mar 29 2018 Josh Stone <jistone@redhat.com> - 1.25.0-1
 - Update to 1.25.0.
 
