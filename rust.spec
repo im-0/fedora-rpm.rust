@@ -27,6 +27,13 @@
 %bcond_with bundled_llvm
 %endif
 
+# Some targets don't have libgit2
+%if 0%{?rhel} && !0%{?epel}
+%bcond_without bundled_libgit2
+%else
+%bcond_with bundled_libgit2
+%endif
+
 # LLDB only works on some architectures
 %ifarch %{arm} aarch64 %{ix86} x86_64
 # LLDB isn't available everywhere...
