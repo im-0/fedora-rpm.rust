@@ -72,6 +72,9 @@ Source0:        https://static.rust-lang.org/dist/%{rustc_package}.tar.xz
 # https://github.com/rust-lang/rust/pull/49959
 Patch1:         pull-49959.patch
 
+# https://github.com/rust-lang/rust/pull/50789/
+Patch2:         0001-Ensure-libraries-built-in-stage0-have-unique-metadat.patch
+
 # Get the Rust triple for any arch.
 %{lua: function rust_triple(arch)
   local abi = "gnu"
@@ -372,6 +375,7 @@ test -f '%{local_rust_root}/bin/rustc'
 %setup -q -n %{rustc_package}
 
 %patch1 -p1
+%patch2 -p1
 
 %if "%{python}" == "python3"
 sed -i.try-py3 -e '/try python2.7/i try python3 "$@"' ./configure
