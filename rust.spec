@@ -421,6 +421,13 @@ sed -i.ffi -e '$a #[link(name = "ffi")] extern {}' \
 find src/vendor -name .cargo-checksum.json \
   -exec sed -i.uncheck -e 's/"files":{[^}]*}/"files":{ }/' '{}' '+'
 
+%if 0%{?fedora} >= 29
+  # gdb-8.1.50 snapshots are hanging our debuginfo-gdb tests on 32-bit platforms,
+  # so just skip these tests for now...
+  sed -i.gdb-hang -e '/Skip debuginfo/a if mode == "debuginfo-gdb" { return; }' \
+    src/bootstrap/test.rs
+%endif
+
 
 %build
 
