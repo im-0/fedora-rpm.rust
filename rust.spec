@@ -438,7 +438,7 @@ export LIBGIT2_SYS_USE_PKG_CONFIG=1
 %global common_libdir %{_prefix}/lib
 %global rustlibdir %{common_libdir}/rustlib
 
-%ifarch %{arm}
+%ifarch %{arm} %{ix86}
 # full debuginfo is exhausting memory; just do libstd for now
 # https://github.com/rust-lang/rust/issues/45854
 %define enable_debuginfo --enable-debuginfo --enable-debuginfo-only-std --disable-debuginfo-tools --disable-debuginfo-lines
