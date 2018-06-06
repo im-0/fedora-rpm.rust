@@ -14,7 +14,7 @@
 %global bootstrap_date 2018-03-29
 
 # Only the specified arches will use bootstrap binaries.
-%global bootstrap_arches %%{rust_arches}
+#global bootstrap_arches %%{rust_arches}
 
 # Using llvm-static may be helpful as an opt-in, e.g. to aid LLVM rebases.
 %bcond_with llvm_static
@@ -56,7 +56,7 @@
 
 Name:           rust
 Version:        %{rustc_version}
-Release:        3%{?dist}
+Release:        4%{?dist}
 Summary:        The Rust Programming Language
 License:        (ASL 2.0 or MIT) and (BSD and MIT)
 # ^ written as: (rust itself) and (bundled libraries)
@@ -655,6 +655,9 @@ rm -f %{buildroot}%{rustlibdir}/etc/lldb_*.py*
 
 
 %changelog
+* Tue Jun 05 2018 Josh Stone <jistone@redhat.com> - 1.26.2-4
+- Rebuild without bootstrap binaries.
+
 * Tue Jun 05 2018 Josh Stone <jistone@redhat.com> - 1.26.2-3
 - Update to 1.26.2.
 - Re-bootstrap to deal with LLVM symbol changes.
