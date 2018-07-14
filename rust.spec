@@ -56,7 +56,7 @@
 
 Name:           rust
 Version:        %{rustc_version}
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        The Rust Programming Language
 License:        (ASL 2.0 or MIT) and (BSD and MIT)
 # ^ written as: (rust itself) and (bundled libraries)
@@ -650,6 +650,9 @@ rm -f %{buildroot}%{rustlibdir}/etc/lldb_*.py*
 
 
 %changelog
+* Sat Jul 14 2018 Fedora Release Engineering <releng@fedoraproject.org> - 1.27.1-3
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_29_Mass_Rebuild
+
 * Tue Jul 10 2018 Josh Stone <jistone@redhat.com> - 1.27.1-2
 - Update to 1.27.1.
 - Security fix for CVE-2018-1000622
