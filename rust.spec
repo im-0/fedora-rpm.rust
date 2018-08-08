@@ -193,8 +193,8 @@ Requires:       /usr/bin/cc
 %global _privatelibs lib(.*-[[:xdigit:]]*|rustc.*)[.]so.*
 %global __provides_exclude ^(%{_privatelibs})$
 %global __requires_exclude ^(%{_privatelibs})$
-%global __provides_exclude_from ^%{_docdir}/.*$
-%global __requires_exclude_from ^%{_docdir}/.*$
+%global __provides_exclude_from ^(%{_docdir}|%{rustlibdir}/src)/.*$
+%global __requires_exclude_from ^(%{_docdir}|%{rustlibdir}/src)/.*$
 
 # While we don't want to encourage dynamic linking to Rust shared libraries, as
 # there's no stable ABI, we still need the unallocated metadata (.rustc) to
