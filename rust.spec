@@ -56,7 +56,7 @@
 
 Name:           rust
 Version:        %{rustc_version}
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        The Rust Programming Language
 License:        (ASL 2.0 or MIT) and (BSD and MIT)
 # ^ written as: (rust itself) and (bundled libraries)
@@ -153,6 +153,9 @@ Provides:       bundled(llvm) = 6.0
 BuildRequires:  cmake >= 2.8.11
 %if 0%{?epel}
 %global llvm llvm5.0
+%endif
+%if 0%{?fedora} >= 29
+%global llvm llvm6.0
 %endif
 %if %defined llvm
 %global llvm_root %{_libdir}/%{llvm}
@@ -650,6 +653,9 @@ rm -f %{buildroot}%{rustlibdir}/etc/lldb_*.py*
 
 
 %changelog
+* Mon Aug 13 2018 Josh Stone <jistone@redhat.com> - 1.28.0-3
+- Use llvm6.0 instead of llvm-7 for now
+
 * Tue Aug 07 2018 Josh Stone <jistone@redhat.com> - 1.28.0-2
 - Rebuild for LLVM ppc64/s390x fixes
 
