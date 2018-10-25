@@ -481,6 +481,7 @@ export LIBSSH2_SYS_USE_PKG_CONFIG=1
 # full debuginfo is exhausting memory; just do libstd for now
 # https://github.com/rust-lang/rust/issues/45854
 %if (0%{?fedora} && 0%{?fedora} < 27) || (0%{?rhel} && 0%{?rhel} <= 7)
+# Older rpmbuild didn't work with partial debuginfo coverage.
 %global debug_package %{nil}
 %define enable_debuginfo --disable-debuginfo --disable-debuginfo-only-std --disable-debuginfo-tools --disable-debuginfo-lines
 %else
