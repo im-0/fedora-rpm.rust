@@ -603,7 +603,7 @@ rm -f %{buildroot}%{rustlibdir}/etc/lldb_*.py*
 %dir %{rustlibdir}/%{rust_triple}/lib
 %{rustlibdir}/%{rust_triple}/lib/*.so
 %{rustlibdir}/%{rust_triple}/codegen-backends/
-%exclude %{_bindir}/{cargo-,}miri
+%exclude %{_bindir}/*miri
 
 
 %files std-static
