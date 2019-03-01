@@ -54,7 +54,7 @@
 
 Name:           rust
 Version:        1.33.0
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        The Rust Programming Language
 License:        (ASL 2.0 or MIT) and (BSD and MIT)
 # ^ written as: (rust itself) and (bundled libraries)
@@ -77,6 +77,9 @@ Patch2:         0001-rust-gdb-relax-the-GDB-version-regex.patch
 # Revert https://github.com/rust-lang/rust/pull/57840
 # We do have the necessary fix in our LLVM 7.
 Patch3:         rust-pr57840-llvm7-debuginfo-variants.patch
+
+# https://github.com/rust-lang/rust/issues/58845
+Patch4:         0001-Backport-deprecation-fixes-from-commit-b7f030e.patch
 
 # Get the Rust triple for any arch.
 %{lua: function rust_triple(arch)
@@ -411,6 +414,7 @@ pushd vendor/rls-analysis
 popd
 %patch2 -p1
 %patch3 -p1 -R
+%patch4 -p1
 
 %if "%{python}" == "python3"
 sed -i.try-py3 -e '/try python2.7/i try python3 "$@"' ./configure
@@ -691,6 +695,9 @@ rm -f %{buildroot}%{rustlibdir}/etc/lldb_*.py*
 
 
 %changelog
+* Fri Mar 01 2019 Josh Stone <jistone@redhat.com> - 1.33.0-2
+- Fix deprecations for self-rebuild
+
 * Thu Feb 28 2019 Josh Stone <jistone@redhat.com> - 1.33.0-1
 - Update to 1.33.0.
 
