@@ -54,7 +54,7 @@
 
 Name:           rust
 Version:        1.34.1
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        The Rust Programming Language
 License:        (ASL 2.0 or MIT) and (BSD and MIT)
 # ^ written as: (rust itself) and (bundled libraries)
@@ -217,15 +217,6 @@ Requires:       /usr/bin/cc
 
 # Use hardening ldflags.
 %global rustflags -Clink-arg=-Wl,-z,relro,-z,now
-
-%ifarch %{ix86}
-# i686 fails to link some static symbols with ThinLTO:
-#   https://bugzilla.redhat.com/show_bug.cgi?id=1701339
-#   https://github.com/rust-lang/rust/issues/60184
-# and since this affects rustbook built with *stage0*, we can't just patch it.
-# Workaround: using a single codegen unit bypasses ThinLTO.
-%global rustflags %{rustflags} -Ccodegen-units=1
-%endif
 
 %if %{without bundled_llvm}
 %if "%{llvm_root}" == "%{_prefix}" || 0%{?scl:1}
@@ -684,6 +675,9 @@ rm -f %{buildroot}%{rustlibdir}/etc/lldb_*.py*
 
 
 %changelog
+* Fri Apr 26 2019 Josh Stone <jistone@redhat.com> - 1.34.1-2
+- Remove the ThinLTO workaround.
+
 * Thu Apr 25 2019 Josh Stone <jistone@redhat.com> - 1.34.1-1
 - Update to 1.34.1.
 - Add a ThinLTO fix for rhbz1701339.
