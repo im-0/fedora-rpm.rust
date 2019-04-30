@@ -54,7 +54,7 @@
 
 Name:           rust
 Version:        1.34.1
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        The Rust Programming Language
 License:        (ASL 2.0 or MIT) and (BSD and MIT)
 # ^ written as: (rust itself) and (bundled libraries)
@@ -481,6 +481,7 @@ export LIBSSH2_SYS_USE_PKG_CONFIG=1
   --enable-extended \
   --enable-vendor \
   --enable-verbose-tests \
+  --set rust.codegen-units-std=1 \
   --release-channel=%{channel}
 
 %{python} ./x.py build
@@ -675,6 +676,9 @@ rm -f %{buildroot}%{rustlibdir}/etc/lldb_*.py*
 
 
 %changelog
+* Tue Apr 30 2019 Josh Stone <jistone@redhat.com> - 1.34.1-3
+- Set rust.codegen-units-std=1
+
 * Fri Apr 26 2019 Josh Stone <jistone@redhat.com> - 1.34.1-2
 - Remove the ThinLTO workaround.
 
