@@ -49,7 +49,7 @@
 
 Name:           rust
 Version:        1.35.0
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        The Rust Programming Language
 License:        (ASL 2.0 or MIT) and (BSD and MIT)
 # ^ written as: (rust itself) and (bundled libraries)
@@ -72,6 +72,9 @@ Patch2:         0001-Limit-internalization-in-LLVM-8-ThinLTO.patch
 
 # https://github.com/rust-lang/rust/pull/61085
 Patch3:         rust-pr61085-fix-ICE-with-incorrect-turbofish.patch
+
+# https://github.com/rust-lang/rust/pull/59974/commits/26e9a81c487f63c734bb7ac1739cdae2da2cb9b1
+Patch4:         0001-bump-bootstrap-fix-compiletest-wrt.-exclude_should_p.patch
 
 # Get the Rust triple for any arch.
 %{lua: function rust_triple(arch)
@@ -396,6 +399,7 @@ test -f '%{local_rust_root}/bin/rustc'
 %patch1 -p1 -R
 %patch2 -p1
 %patch3 -p1
+%patch4 -p1
 
 %if "%{python}" == "python3"
 sed -i.try-py3 -e '/try python2.7/i try python3 "$@"' ./configure
@@ -679,6 +683,9 @@ rm -f %{buildroot}%{rustlibdir}/etc/lldb_*.py*
 
 
 %changelog
+* Wed May 29 2019 Josh Stone <jistone@redhat.com> - 1.35.0-2
+- Fix compiletest for rebuild testing.
+
 * Thu May 23 2019 Josh Stone <jistone@redhat.com> - 1.35.0-1
 - Update to 1.35.0.
 
