@@ -9,10 +9,10 @@
 # e.g. 1.10.0 wants rustc: 1.9.0-2016-05-24
 # or nightly wants some beta-YYYY-MM-DD
 # Note that cargo matches the program version here, not its crate version.
-%global bootstrap_rust 1.36.0
-%global bootstrap_cargo 1.36.0
-%global bootstrap_channel 1.36.0
-%global bootstrap_date 2019-07-04
+%global bootstrap_rust 1.37.0
+%global bootstrap_cargo 1.37.0
+%global bootstrap_channel 1.37.0
+%global bootstrap_date 2019-08-15
 
 # Only the specified arches will use bootstrap binaries.
 #global bootstrap_arches %%{rust_arches}
@@ -48,7 +48,7 @@
 %endif
 
 Name:           rust
-Version:        1.37.0
+Version:        1.38.0
 Release:        1%{?dist}
 Summary:        The Rust Programming Language
 License:        (ASL 2.0 or MIT) and (BSD and MIT)
@@ -66,6 +66,9 @@ Source0:        https://static.rust-lang.org/dist/%{rustc_package}.tar.xz
 # Revert https://github.com/rust-lang/rust/pull/57840
 # We do have the necessary fix in our LLVM 7.
 Patch1:         rust-pr57840-llvm7-debuginfo-variants.patch
+
+# Mask a warning-as-error when rebuilding 1.38 with 1.38
+Patch2:         rustc-1.38.0-rebuild-bootstrap.patch
 
 # Get the Rust triple for any arch.
 %{lua: function rust_triple(arch)
@@ -397,6 +400,7 @@ test -f '%{local_rust_root}/bin/rustc'
 %setup -q -n %{rustc_package}
 
 %patch1 -p1 -R
+%patch2 -p1
 
 %if "%{python}" == "python3"
 sed -i.try-py3 -e '/try python2.7/i try python3 "$@"' ./configure
@@ -448,6 +452,10 @@ sed -i.ffi -e '$a #[link(name = "ffi")] extern {}' \
 # that file list, cargo won't have anything to complain about.
 find vendor -name .cargo-checksum.json \
   -exec sed -i.uncheck -e 's/"files":{[^}]*}/"files":{ }/' '{}' '+'
+
+# Sometimes Rust sources start with #![...] attributes, and "smart" editors think
+# it's a shebang and make them executable. Then brp-mangle-shebangs gets upset...
+find -name '*.rs' -type f -perm /111 -exec chmod -v -x '{}' '+'
 
 
 %build
@@ -700,6 +708,9 @@ rm -f %{buildroot}%{rustlibdir}/etc/lldb_*.py*
 
 
 %changelog
+* Thu Sep 26 2019 Josh Stone <jistone@redhat.com> - 1.38.0-1
+- Update to 1.38.0.
+
 * Thu Aug 15 2019 Josh Stone <jistone@redhat.com> - 1.37.0-1
 - Update to 1.37.0.
 
