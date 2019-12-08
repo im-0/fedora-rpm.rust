@@ -1,0 +1,63 @@
+#!/usr/bin/python3
+
+from __future__ import print_function
+
+import os
+import subprocess
+import sys
+
+
+_STRIP = '/usr/bin/strip'
+_AR = '/usr/bin/ar'
+
+_MAGIC_AR = b'!<arch>'
+_MAGIC_WASM = b'\0asm'
+
+
+def _not_wasm(ar_fname):
+    with open(ar_fname, 'rb') as f:
+        magic = f.read(len(_MAGIC_AR))
+    if magic != _MAGIC_AR:
+        return True
+
+    fnames = subprocess.check_output((_AR, 't', ar_fname))
+    fnames = fnames.decode('ascii').strip().split()
+
+    for fname in fnames:
+        proc = subprocess.Popen(
+            (_AR, 'p', ar_fname, fname),
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=open(os.devnull, 'wb'))
+        proc.stdin.close()
+
+        magic = proc.stdout.read(len(_MAGIC_WASM))
+        proc.stdout.close()
+        proc.wait()
+
+        if magic == _MAGIC_WASM:
+            print(ar_fname, 'is WebAssembly static library, skipping', file=sys.stderr)
+            return False
+
+    return True
+
+
+only_files_left = False
+strip_opts = []
+strip_files = []
+for arg in sys.argv[1:]:
+    if only_files_left:
+        strip_files.append(arg)
+    elif arg == '--':
+        only_files_left = True
+    elif arg[:1] in ('-', '@'):
+        strip_opts.append(arg)
+    elif os.path.exists(arg):
+        strip_files.append(arg)
+    else:
+        strip_opts.append(arg)
+
+strip_files = [fname for fname in strip_files if _not_wasm(fname)]
+
+if strip_files:
+    os.execvp(_STRIP, [_STRIP] + strip_opts + ['--'] + strip_files)

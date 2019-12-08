@@ -47,9 +47,17 @@
 %bcond_with lldb
 %endif
 
+# WebAssembly support requires wasm-aware lld, which is known to
+# be good enough starting at LLVM 8.0.0.
+%if 0%{?fedora} < 30 || %{with bundled_llvm}
+%bcond_with wasm
+%else
+%bcond_without wasm
+%endif
+
 Name:           rust
 Version:        1.39.0
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        The Rust Programming Language
 License:        (ASL 2.0 or MIT) and (BSD and MIT)
 # ^ written as: (rust itself) and (bundled libraries)
@@ -62,6 +70,7 @@ ExclusiveArch:  %{rust_arches}
 %global rustc_package rustc-%{channel}-src
 %endif
 Source0:        https://static.rust-lang.org/dist/%{rustc_package}.tar.xz
+Source1:        strip-if-not-wasm
 
 # Revert https://github.com/rust-lang/rust/pull/57840
 # We do have the necessary fix in our LLVM 7.
@@ -79,6 +88,11 @@ Patch3:         0001-Hopefully-fix-rustdoc-build.patch
 # https://github.com/rust-lang/rust/pull/66317
 Patch4:         rust-pr66317-bindir-relative.patch
 
+# By default, rust tries to use "rust-lld" as a linker for WebAssembly.
+# There is no "rust-lld" in Fedora packages, but we can use regular lld
+# instead.
+Patch5:         0001-Use-lld-provided-by-system-for-wasm.patch
+
 # Get the Rust triple for any arch.
 %{lua: function rust_triple(arch)
   local abi = "gnu"
@@ -95,6 +109,14 @@ end}
 
 %global rust_triple %{lua: print(rust_triple(rpm.expand("%{_target_cpu}")))}
 
+%if %with wasm
+%global rust_triple_cross wasm32-unknown-unknown
+%else
+%global rust_triple_cross %{nil}
+%endif
+
+%global rust_triple_targets %{rust_triple},%{rust_triple_cross}
+
 %if %defined bootstrap_arches
 # For each bootstrap arch, add an additional binary Source.
 # Also define bootstrap_source just for the current target.
@@ -108,7 +130,7 @@ end}
   local target_arch = rpm.expand("%{_target_cpu}")
   for i, arch in ipairs(bootstrap_arches) do
     print(string.format("Source%d: %s-%s.tar.xz\n",
-                        i, base, rust_triple(arch)))
+                        i + 1, base, rust_triple(arch)))
     if arch == target_arch then
       rpm.define("bootstrap_source "..i)
     end
@@ -171,9 +193,17 @@ BuildRequires:  cmake >= 2.8.11
 %global llvm llvm
 %global llvm_root %{_prefix}
 %endif
+%if %with wasm
+BuildRequires:  %{llvm}-devel >= 8.0
+%else
 BuildRequires:  %{llvm}-devel >= 6.0
+%endif
 %if %with llvm_static
-BuildRequires:  %{llvm}-static
+%if %with wasm
+BuildRequires:  %{llvm}-static >= 8.0
+%else
+BuildRequires:  %{llvm}-static >= 6.0
+%endif
 BuildRequires:  libffi-devel
 %endif
 %endif
@@ -235,12 +265,48 @@ segfaults, and guarantees thread safety.
 This package includes the Rust compiler and documentation generator.
 
 
-%package std-static
-Summary:        Standard library for Rust
+%if %with wasm
+# GNU strip removes symbol table from static library files, but this table
+# is required for linking WebAssembly binaries using lld. lld produces errors
+# like following when trying to link with stripped libraries:
+#
+#     lld: error: /.../libstd-....rlib: archive has no index; run ranlib to add one
+#
+# To circumvent this, we use wrapper script for strip utility, which filters out
+# archives containing WebAssembly binaries and prevents them from being stripped.
+%global __strip	"%{python} %{SOURCE1}"
+%endif
 
-%description std-static
+
+%{lua: do
+  for triple in string.gmatch(rpm.expand("%{rust_triple_targets}"), "([^,]+)") do
+    local pkg_name_suffix, triple_description
+    if triple == rpm.expand("%{rust_triple}") then
+      pkg_name_suffix = ""
+      triple_description = triple .. " (native for host)"
+    else
+      pkg_name_suffix = "-" .. triple
+      triple_description = triple
+    end
+    local wasm_dep
+    if string.sub(triple, 1, 4) == "wasm" then
+		wasm_dep = "Requires: lld >= 8.0"
+    else
+		wasm_dep = ""
+    end
+    print(string.format([[
+%%package std-static%s
+Summary:        Standard library for Rust
+%s
+
+%%description std-static%s
 This package includes the standard libraries for building applications
-written in Rust.
+written in Rust for target %s.
+
+
+]], pkg_name_suffix, wasm_dep, pkg_name_suffix, triple_description))
+  end
+end}
 
 
 %package debugger-common
@@ -386,14 +452,28 @@ This package includes source files for the Rust standard library.  It may be
 useful as a reference for code completion tools in various editors.
 
 
-%package analysis
+%{lua: do
+  for triple in string.gmatch(rpm.expand("%{rust_triple_targets}"), "([^,]+)") do
+    local pkg_name_suffix
+    if triple == rpm.expand("%{rust_triple}") then
+      pkg_name_suffix = ""
+    else
+      pkg_name_suffix = "-" .. triple
+    end
+    print(rpm.expand(string.format([[
+%%package analysis%s
 Summary:        Compiler analysis data for the Rust standard library
-Requires:       rust-std-static%{?_isa} = %{version}-%{release}
+Requires:       rust-std-static%s%%{?_isa} = %%{version}-%%{release}
 
-%description analysis
+%%description analysis%s
 This package contains analysis data files produced with rustc's -Zsave-analysis
 feature for the Rust standard library. The RLS (Rust Language Server) uses this
 data to provide information about the Rust standard library.
+
+
+]], pkg_name_suffix, pkg_name_suffix, pkg_name_suffix)))
+  end
+end}
 
 
 %prep
@@ -412,6 +492,10 @@ test -f '%{local_rust_root}/bin/rustc'
 %patch2 -p1
 %patch3 -p1
 %patch4 -p1
+%if %with wasm
+%patch5 -p1
+%endif
+
 
 %if "%{python}" == "python3"
 sed -i.try-py3 -e '/try python2.7/i try python3 "$@"' ./configure
@@ -526,15 +610,35 @@ export LIBSSH2_SYS_USE_PKG_CONFIG=1
   %{?codegen_units_std} \
   --release-channel=%{channel}
 
+# Build everything for host triple.
 %{python} ./x.py build
 %{python} ./x.py doc
 
+# For other triples, build only "libstd" and "analysis" files.
+%{lua: do
+  for triple in string.gmatch(rpm.expand("%{rust_triple_cross}"), "([^,]+)") do
+    print(rpm.expand(string.format([[
+%%{python} ./x.py build --host=%%{rust_triple} --target=%s src/libstd
+]], triple)))
+  end
+end}
 
 %install
 %{?cmake_path:export PATH=%{cmake_path}:$PATH}
 %{?rustflags:export RUSTFLAGS="%{rustflags}"}
 
+# Install everything for host triple.
 DESTDIR=%{buildroot} %{python} ./x.py install
+
+# For other triples, install only "libstd" and "analysis" files.
+%{lua: do
+  for triple in string.gmatch(rpm.expand("%{rust_triple_cross}"), "([^,]+)") do
+    print(rpm.expand(string.format([[
+DESTDIR=%%{buildroot} %%{python} ./x.py install --host=%%{rust_triple} --target=%s src/libstd
+DESTDIR=%%{buildroot} %%{python} ./x.py install --host=%%{rust_triple} --target=%s analysis
+]], triple, triple)))
+  end
+end}
 
 # Make sure the shared libraries are in the proper libdir
 %if "%{_libdir}" != "%{common_libdir}"
@@ -632,11 +736,25 @@ rm -f %{buildroot}%{rustlibdir}/etc/lldb_*.py*
 %exclude %{_bindir}/*miri
 
 
-%files std-static
-%dir %{rustlibdir}
-%dir %{rustlibdir}/%{rust_triple}
-%dir %{rustlibdir}/%{rust_triple}/lib
-%{rustlibdir}/%{rust_triple}/lib/*.rlib
+%{lua: do
+  for triple in string.gmatch(rpm.expand("%{rust_triple_targets}"), "([^,]+)") do
+    local pkg_name_suffix
+    if triple == rpm.expand("%{rust_triple}") then
+      pkg_name_suffix = ""
+    else
+      pkg_name_suffix = "-" .. triple
+    end
+    print(rpm.expand(string.format([[
+%%files std-static%s
+%%dir %%{rustlibdir}
+%%dir %%{rustlibdir}/%s
+%%dir %%{rustlibdir}/%s/lib
+%%{rustlibdir}/%s/lib/*.rlib
+
+
+]], pkg_name_suffix, triple, triple, triple)))
+  end
+end}
 
 
 %files debugger-common
@@ -716,11 +834,28 @@ rm -f %{buildroot}%{rustlibdir}/etc/lldb_*.py*
 %{rustlibdir}/src
 
 
-%files analysis
-%{rustlibdir}/%{rust_triple}/analysis/
+%{lua: do
+  for triple in string.gmatch(rpm.expand("%{rust_triple_targets}"), "([^,]+)") do
+    local pkg_name_suffix
+    if triple == rpm.expand("%{rust_triple}") then
+      pkg_name_suffix = ""
+    else
+      pkg_name_suffix = "-" .. triple
+    end
+    print(rpm.expand(string.format([[
+%%files analysis%s
+%%{rustlibdir}/%s/analysis/
+
+
+]], pkg_name_suffix, triple)))
+  end
+end}
 
 
 %changelog
+* Sun Dec 08 2019 Ivan Mironov <mironov.ivan@gmail.com> - 1.39.0-3
+- Add wasm32-unknown-unknown builds of -std-static and -analysis
+
 * Tue Nov 12 2019 Josh Stone <jistone@redhat.com> - 1.39.0-2
 - Fix a couple build and test issues with rustdoc.
 
